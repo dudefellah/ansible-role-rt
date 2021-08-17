@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: dudefellah
+  role_name: rt
+  description: Install and configure Request Tracker (RT)
+
+  license: GPL-2.0-or-later
+
+  min_ansible_version: 2.9
+
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+
+  galaxy_tags:
+    - perl
+    - request_tracker
+    - rt
+
+dependencies: []

@@ -1,0 +1,51 @@
+---
+- hosts: all
+  tasks:
+    - name: Install epel
+      package:
+        name: epel-release
+        state: present
+
+    - name: Install molecule test dependencies
+      package:
+        name:
+          - bzip2
+          - curl
+          - gcc
+          - perl-CPAN
+          - wget
+        state: present
+
+    - name: Install dependencies for CentOS 7
+      package:
+        name:
+          - perl-Test-Base
+        state: present
+      when:
+        - "ansible_distribution in ['CentOS']"
+        - "ansible_distribution_major_version|int == 7"
+
+    - name: Install cpanminus for non-CentOS 7
+      package:
+        name:
+          - cpanminus
+        state: present
+      when:
+        - >-
+          (ansible_distribution not in ['CentOS'])
+          or (ansible_distribution_major_version|int != 7)
+
+    - name: Configure CPAN with defaults
+      shell: 'set -euxo pipefail && (echo y;echo o conf prerequisites_policy follow;echo o conf commit)|cpan'
+      failed_when: false
+
+    - name: Install gnupg2 2.2+
+      shell: >-
+        set -euxo pipefail && curl -Lo - "https://gist.githubusercontent.com/simbo1905/ba3e8af9a45435db6093aea35c6150e8/raw/83561e214e36f6556fd6b1ec0a384cf28cb2debf/install-gnupg22.sh" | bash -
+      register: gpg_install
+      environment:
+        AUTOMATED_TESTING: true
+        PERL_MM_USE_DEFAULT: 1
+      when:
+        - "ansible_distribution in ['CentOS']"
+        - "ansible_distribution_major_version|int == 7"

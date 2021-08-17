@@ -1,0 +1,38 @@
+---
+# tasks file for ansible-role-rt
+- name: Gather role facts
+  include_tasks: gather_facts.yml
+
+- name: Install dependency packages
+  package:
+    name: "{{ _rt_packages }}"
+    state: present
+
+- name: Run RT installation tasks
+  include_tasks: install_rt.yml
+  when:
+    - "rt_install"
+    - "_rt_download_url|length > 0"
+
+- name: Configure RT instance
+  include_tasks: configure_rt.yml
+  when:
+    - "not rt_install|bool"
+    - "rt_siteconfig_path is not none"
+    - "rt_siteconfig"
+
+- name: Update RT database
+  command:
+  args:
+    cmd: sbin/rt-setup-database --action upgrade --upgrade-from "{{ rt_update_source_version }}" --upgrade-to "{{ rt_version }}"
+    chdir: "{{ rt_prefix }}"
+  environment:
+    AUTOMATED_TESTING: true
+    PERL_MM_USE_DEFAULT: 1
+    PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+    RT_DBA_USER: "{{ rt_dba_user }}"
+    RT_DBA_PASSWORD: "{{ rt_dba_password }}"
+  no_log: "{{ rt_no_log }}"
+  when:
+    - "rt_update_source_version is not none"
+    - "rt_version is not none"

@@ -1,0 +1,8 @@
+---
+- name: Install RT SiteConfig
+  template:
+    src: RT_SiteConfig.pm.j2
+    dest: "{{ rt_siteconfig_path }}"
+    owner: root
+    group: root
+    validate: "perl -c %s"

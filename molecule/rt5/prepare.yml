@@ -1,0 +1,52 @@
+---
+- hosts: all
+  tasks:
+    - name: Install epel
+      package:
+        name: epel-release
+        state: present
+
+    - name: Install dnf-plugins-core on CentOS 8
+      package:
+        name: dnf-plugins-core
+        state: present
+      when:
+        - "ansible_distribution == 'CentOS'"
+        - "ansible_distribution_major_version|int == 8"
+
+    - name: Enable CentOS8 PowerTools repo
+      lineinfile:
+        path: /etc/yum.repos.d/CentOS-Linux-PowerTools.repo
+        create: false
+        regexp: enabled=
+        line: enabled=1
+      when:
+        - "ansible_distribution == 'CentOS'"
+        - "ansible_distribution_major_version|int == 8"
+
+    - name: Install perl-Test-Base and other dependencies
+      package:
+        name:
+          - bzip2
+          - curl
+          - gcc
+          - perl-CPAN
+          - perl-Test-Base
+          - wget
+        state: present
+        update_cache: true
+
+    - name: Configure CPAN with defaults
+      shell: 'set -euxo pipefail && (echo y;echo o conf prerequisites_policy follow;echo o conf commit)|cpan'
+      failed_when: false
+
+    - name: Install gnupg2 2.2+
+      shell: >-
+        set -euxo pipefail && curl -Lo - "https://gist.githubusercontent.com/simbo1905/ba3e8af9a45435db6093aea35c6150e8/raw/83561e214e36f6556fd6b1ec0a384cf28cb2debf/install-gnupg22.sh" | bash -
+      register: gpg_install
+      environment:
+        AUTOMATED_TESTING: true
+        PERL_MM_USE_DEFAULT: 1
+      when:
+        - "ansible_distribution == 'CentOS'"
+        - "ansible_distribution_major_version|int == 7"

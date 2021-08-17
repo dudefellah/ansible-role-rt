@@ -1,0 +1,93 @@
+---
+# defaults file for ansible-role-rt
+#
+# Set the version of RT to install when rt_install is true.
+rt_version: "4.4.4"
+
+# Set to false to allow output for tasks that may expose sensitive information
+rt_no_log: true
+
+# Set to something specific if you want an alternate download URL.
+# Otherwise, it will be retrieved from the official source at
+# Best Practical with the use of the `rt_version` variable.
+rt_download_url: null
+
+# Installation prefix for RT. This helps determine where the files
+# installed by RT go, and also on the default cpan locallib value to
+# determine the installation path of any extra CPAN modules you use.
+rt_prefix: /opt/rt
+
+# Set to true to download RT before configuring it.
+rt_install: true
+
+# Packages to install as dependencies.
+# When set to null, the appropriate dependencies will be guessed
+# (see vars/main.yml). Set this to an empty list to prevent any
+# dependencies from being installed.
+rt_packages: null
+
+# Options to pass to ./configure on initial build/installation
+rt_configure_options:
+  - --enable-graphviz
+  - --enable-gd
+  - --with-web-user=apache
+  - --with-web-group=apache
+  - --with-db-type=Pg
+
+# Set to false to skip 'make testdeps' during install
+rt_make_testdeps: true
+
+# Set to false to prevent database initialization and/or upgrades
+rt_initialize_database: true
+
+# When this value is set, a database upgrade will be attempted at the end
+# of the installation. This value should probably only be set as a one-off
+# (eg. as an argument when running ansible-playbook) during the upgrade process,
+# and be left null in your values files.
+rt_update_source_version: null
+
+# The username for the database admin user who will be used for installing
+# the RT database. This gets passed as an environment variable to the
+# database setup command(s).
+#
+# If you're not doing DB upgrades or updates, this value won't be used.
+rt_dba_user: postgres
+
+# The password for the database admin who will be installing the RT database.
+rt_dba_password: postgres
+
+# CPAN modules to install before the installation process installs its own
+# dependencies. This can help fix issues with the CPAN modules being installed
+# with 'make fixdeps'.
+#
+# On some distributions (eg. CentOS 7), we use the regular "cpan" command
+# rather than cpanminus (combined with the cpanm module in Ansible) due to
+# the fact that we want to avoid installing some cpanminus dependencies. Since
+# we try to always install specific module versions, you will need to include
+# the CPAN author name (eg. SULLR for IO::Socket::SSL) for the installation
+# to succeed. This isn't required for distributions that use cpanm (which is
+# all distributions other than CentOS 7, for now).
+#
+# All entries in this list have the format:
+# { name: "Module::Name", version: "1.2.3" }
+#
+# If you're including the author name, you would include:
+#
+# { author: "MYAUTHOR" }
+rt_cpan_modules: null
+
+# The locallib value to be passed to the cpanm module.
+# When null, the this value will be generated based on rt_prefix.
+rt_cpan_locallib: null
+
+# Location of the cpanm (cpanminus) binary
+rt_cpanm_binpath: /usr/bin/cpanm
+
+# Extra PERL5LIB value for use during build and install
+rt_extra_perlib: null
+
+# Path to the RT_SiteConfig.pm
+rt_siteconfig_path: /opt/rt/etc/RT_SiteConfig.pm
+
+# Contents of RT_SiteConfig.pm
+rt_siteconfig: ""

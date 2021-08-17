@@ -1,0 +1,74 @@
+---
+- name: Get the list of installable packages
+  set_fact:
+    _rt_packages: >-
+      {%- if rt_packages is not none -%}
+      {{ rt_packages }}
+      {%- elif (
+        (ansible_distribution|lower in __rt_packages)
+        and (ansible_distribution_major_version|int in __rt_packages[ansible_distribution|lower])
+      ) -%}
+      {{ __rt_packages[ansible_distribution|lower][ansible_distribution_major_version|int] }}
+      {%- elif (
+        (ansible_distribution|lower in __rt_packages)
+        and ('default' in __rt_packages[ansible_distribution|lower])
+      ) -%}
+      {{ __rt_packages[ansible_distribution|lower]['default'] }}
+      {%- else -%}
+      []
+      {%- endif -%}
+
+- name: Create a list of installable CPAN modules
+  set_fact:
+    _rt_cpan_modules: >-
+      {%- if rt_cpan_modules is not none -%}
+      {{ rt_cpan_modules }}
+      {%- elif (
+        (ansible_distribution|lower in __rt_cpan_modules)
+        and (ansible_distribution_major_version|int in __rt_cpan_modules[ansible_distribution|lower])
+      ) -%}
+      {{ __rt_cpan_modules[ansible_distribution|lower][ansible_distribution_major_version|int] }}
+      {%- elif (
+        (ansible_distribution|lower in __rt_cpan_modules)
+        and ('default' in __rt_cpan_modules[ansible_distribution|lower])
+      ) -%}
+      {{ __rt_cpan_modules[ansible_distribution|lower]['default'] }}
+      {%- else -%}
+      []
+      {%- endif -%}
+
+- name: Set the locallib path for RT CPAN dependency modules
+  set_fact:
+    _rt_cpan_locallib: >-
+      {%- if rt_cpan_locallib is not none -%}
+      {{ rt_cpan_locallib }}
+      {%- else -%}
+      {{ rt_prefix }}/lib
+      {%- endif -%}
+
+- name: Set the RT download source
+  set_fact:
+    _rt_download_url: >-
+      {%- if rt_download_url is not none -%}
+      {{ rt_download_url }}
+      {%- else -%}
+      {{ __rt_download_template }}
+      {%- endif -%}
+
+- name: Gather the logged in user
+  command: whoami
+  register: _rt_whoami
+  changed_when: false
+
+- name: Make sure we have a local user
+  set_fact:
+    _rt_ansible_user: "{{ ansible_user | default(_rt_whoami.stdout) }}"
+
+- name: Get the Ansible user's info from the passwd db
+  getent:
+    database: passwd
+    key: "{{ _rt_ansible_user }}"
+
+- name: Store the Ansible user's home directory for convenience
+  set_fact:
+    _rt_install_user_home: "{{ getent_passwd[_rt_ansible_user][4] }}"

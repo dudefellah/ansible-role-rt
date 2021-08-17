@@ -1,0 +1,156 @@
+---
+# tasks file for ansible-role-rt
+- name: Test for an existing RT installation
+  stat:
+    path: "{{ rt_prefix }}/etc/RT_SiteConfig.pm"
+  register: __rt_config_st
+
+- name: Create the dest dir
+  file:
+    path: "{{ rt_prefix }}/lib"
+    mode: "0755"
+    state: directory
+  when:
+    - "not __rt_config_st.stat.exists|bool"
+
+- name: Create the RT etc dir
+  file:
+    path: "{{ rt_prefix }}/etc"
+    mode: "0755"
+    state: directory
+  when:
+    - "not __rt_config_st.stat.exists|bool"
+
+- name: (Pre)-Configure the RT instance
+  include_tasks: configure_rt.yml
+
+- name: Install extra CPAN modules (CentOS 7)
+  command: >-
+    cpan {% if (__cm.notest | default('false')) %}-f{% endif %}
+      {{ __cm.author }}/{{ __cm.name | replace('::', '-') }}-{{ __cm.version }}.tar.gz
+  #shell: >-
+  #  set -euxo pipefail &&
+  #  cpan {% if (__cm.notest | default('false')) %}-f{% endif %}
+  #    {{ __cm.author }}/{{ __cm.name | replace('::', '-') }}-{{ __cm.version }}.tar.gz 2>&1 | tee /tmp/cpan.log
+  environment:
+    PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+  loop: "{{ _rt_cpan_modules }}"
+  loop_control:
+    loop_var: __cm
+  when:
+    - "ansible_distribution in ['CentOS']"
+    - "ansible_distribution_major_version|int == 7"
+    - "not __rt_config_st.stat.exists|bool"
+
+- name: Install any extra cpan modules
+  cpanm:
+    name: "{{ __cm.name }}"
+    locallib: "{{ rt_prefix }}"
+    version: "{{ __cm.version }}"
+    notest: "{{ __cm.notest | default('false') }}"
+  environment:
+    PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+  loop: "{{ _rt_cpan_modules }}"
+  loop_control:
+    loop_var: __cm
+  when:
+    - >-
+      (ansible_distribution not in ['CentOS'])
+      or (ansible_distribution_major_version|int != 7)
+    - "not __rt_config_st.stat.exists|bool"
+
+- block:
+    - name: Create a tempdir
+      tempfile:
+        state: directory
+      changed_when: false
+      register: tmpdir
+
+    - name: Download RT
+      unarchive:
+        src: "{{ _rt_download_url }}"
+        dest: "{{ tmpdir.path }}/"
+        remote_src: true
+
+    - name: Configure RT
+      command: "./configure --prefix {{ rt_prefix  }} {{ rt_configure_options | join(' ') }}"
+      environment:
+        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+      args:
+        chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+
+    # On CentOS 7, PERL5LIB is meaningless, since we're just letting CPAN
+    # install into the system path.
+    - name: Make fixdeps (w/o cpanm)
+      make:
+        chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+        target: fixdeps
+      environment:
+        AUTOMATED_TESTING: true
+        PERL_MM_USE_DEFAULT: 1
+        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+      when:
+        - >-
+          (
+            (ansible_distribution == 'CentOS')
+            and (ansible_distribution_major_version|int == 7)
+          )
+          or (rt_cpanm_binpath is none)
+
+    - name: Make fixdeps (cpanm)
+      make:
+        chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+        target: fixdeps
+      environment:
+        AUTOMATED_TESTING: true
+        PERL_MM_USE_DEFAULT: 1
+        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+        RT_FIX_DEPS_CMD: "{{ rt_cpanm_binpath }}"
+      when:
+        - >-
+          (ansible_distribution != 'CentOS')
+          or (ansible_distribution_major_version|int != 7)
+        - "rt_cpanm_binpath is not none"
+
+    - name: Make testdeps
+      make:
+        chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+        target: testdeps
+      environment:
+        AUTOMATED_TESTING: true
+        PERL_MM_USE_DEFAULT: 1
+        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+      when:
+        - "rt_make_testdeps|bool"
+
+    - name: Make install
+      make:
+        chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+        target: install
+      environment:
+        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perlib | default('') }}"
+
+    - name: Make initialize-database
+      command:
+      args:
+        cmd: sbin/rt-setup-database --action init > /tmp/db-inst.log 2>&1
+        chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+      environment:
+        AUTOMATED_TESTING: true
+        PERL_MM_USE_DEFAULT: 1
+        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+        RT_DBA_USER: "{{ rt_dba_user }}"
+        RT_DBA_PASSWORD: "{{ rt_dba_password }}"
+      no_log: "{{ rt_no_log }}"
+      when:
+        - "rt_initialize_database"
+  always:
+    - name: Clean out tmpdir
+      file:
+        path: "{{ tmpdir.path }}"
+        state: absent
+      changed_when: false
+      when:
+        - "not __rt_debug | default(false)"
+  when:
+    - "not __rt_config_st.stat.exists|bool"

@@ -1,0 +1,18 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+#  - name: centos-7-rt
+#    image: centos:centos7
+  - name: centos-8-rt
+    image: centos:centos8
+provisioner:
+  name: ansible
+  prepare: prepare.yml
+  config_options:
+    defaults:
+      deprecation_warnings: false
+verifier:
+  name: testinfra

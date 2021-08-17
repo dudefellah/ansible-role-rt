@@ -1,0 +1,90 @@
+---
+# vars file for ansible-role-rt
+__rt_packages:
+  centos:
+    7:
+      - expat
+      - expat-devel
+      - gcc
+      - gcc-c++
+      - gd
+      - gd-devel
+      - git
+      - gnupg1
+      - graphviz
+      - graphviz-devel
+      - make
+      - mariadb-devel
+      - mod_fcgid
+      - openssl
+      - openssl-devel
+      - perl
+      - perl
+      - perl-CPAN
+      - perl-CPAN
+      - perl-XML-Parser
+      - postgresql-devel
+      - screen
+      - wget
+      - which
+    8:
+      - cpanminus
+      - expat
+      - expat-devel
+      - gcc
+      - gcc-c++
+      - gd
+      - gd-devel
+      - graphviz
+      - graphviz-devel
+      - libpq-devel
+      - mod_fcgid
+      - openssl
+      - openssl-devel
+      - perl
+      - perl-CGI
+      - perl-CPAN
+      - perl-Crypt-SMIME
+      - perl-Crypt-X509
+      - perl-GD
+      - perl-GnuPG-Interface
+      - perl-GraphViz
+      - perl-libwww-perl
+      - perl-LWP-Protocol-https
+      - perl-Plack
+      - perl-String-ShellQuote
+      - perl-YAML
+      - screen
+      - spawn-fcgi
+      - wget
+      - which
+
+# RT's "make fixdeps" should handle all dependencies, but things get weird with
+# Net::SSL and LWP::Protocol::https if you don't have IO::Socket::SSL installed
+# first. With that in mind, a CPAN module dependency section exists here to
+# allow pre-installation of CPAN modules if you'd like.
+__rt_cpan_modules:
+  centos:
+    7:
+      - name: IO::Socket::SSL
+        version: 2.071
+        author: SULLR
+      - name: HTML::Mason
+        version: 1.59
+        author: DROLSKY
+      - name: HTML::Mason::PSGIHandler
+        version: 0.53
+        author: RUZ
+    8:
+      - name: HTML::FormatText
+        version: 2.16
+      - name: HTML::TreeBuilder
+        version: 5.07
+      - name: HTML::FormatText::WithLinks
+        version: 0.15
+      - name: HTML::FormatText::WithLinks::AndTables
+        version: 0.07
+      - name: Plack::Test
+        version: 1.0048
+
+__rt_download_template: "https://download.bestpractical.com/pub/rt/release/rt-{{ rt_version }}.tar.gz"

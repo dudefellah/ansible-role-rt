@@ -29,7 +29,7 @@
   environment:
     AUTOMATED_TESTING: true
     PERL_MM_USE_DEFAULT: 1
-    PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+    PERL5LIB: "{{ _rt_perl5lib }}"
     RT_DBA_USER: "{{ rt_dba_user }}"
     RT_DBA_PASSWORD: "{{ rt_dba_password }}"
   no_log: "{{ rt_no_log }}"

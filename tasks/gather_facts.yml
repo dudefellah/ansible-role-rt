@@ -72,3 +72,23 @@
 - name: Store the Ansible user's home directory for convenience
   set_fact:
     _rt_install_user_home: "{{ getent_passwd[_rt_ansible_user][4] }}"
+
+- name: Collect an appropriate PERL5LIB environment variable
+  set_fact:
+    _rt_perl5lib: >-
+      {%- if (
+            (rt_cpan_locallib is not none)
+            and (rt_extra_perllibs is not none)
+          ) -%}
+      {{ ([ rt_prefix + '/lib', rt_prefix + '/lib/perl5',
+           rt_cpan_locallib ] + rt_extra_perllibs) | join(':') }}
+      {%- elif rt_cpan_locallib is not none -%}
+      {{ [ rt_prefix + '/lib', rt_prefix + '/lib/perl5',
+           rt_cpan_locallib ] | join(':') }}
+      {%- elif rt_extra_perllibs is not none -%}
+      {{ ([ rt_prefix + '/lib', rt_prefix + '/lib/perl5' ]
+          + rt_extra_perllibs) | join(':') }}
+      {%- else -%}
+      {{ [ rt_prefix + '/lib', rt_prefix + '/lib/perl5' ]
+         | join(':') }}
+      {%- endif -%}

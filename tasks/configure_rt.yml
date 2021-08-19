@@ -1,8 +1,14 @@
 ---
-- name: Install RT SiteConfig
+- name: Install RT SiteConfig(s)
   template:
     src: RT_SiteConfig.pm.j2
-    dest: "{{ rt_siteconfig_path }}"
+    dest: "{{ __rt_siteconfig.dest }}"
     owner: root
-    group: root
+    group: "{{ rt_web_group }}"
+    mode: "0660"
     validate: "perl -c %s"
+  vars:
+    rt_siteconfig: "{{ __rt_siteconfig.content }}"
+  no_log: "{{ rt_no_log }}"
+  notify:
+    - "rt restart webserver"

@@ -26,12 +26,18 @@ rt_install: true
 # dependencies from being installed.
 rt_packages: null
 
+# The RT web user and group are used to determine ownership of certain
+# files that Apache needs access to.
+rt_web_user: apache
+
+rt_web_group: apache
+
 # Options to pass to ./configure on initial build/installation
 rt_configure_options:
   - --enable-graphviz
   - --enable-gd
-  - --with-web-user=apache
-  - --with-web-group=apache
+  - --with-web-user={{ rt_web_user }}
+  - --with-web-group={{ rt_web_group }}
   - --with-db-type=Pg
 
 # Set to false to skip 'make testdeps' during install
@@ -76,6 +82,21 @@ rt_dba_password: postgres
 # { author: "MYAUTHOR" }
 rt_cpan_modules: null
 
+# When set, the cpanminus operations (this role will artificially fail on
+# CentOS 7 if you try to have this value set to non-null due to the lack of
+# cpanminus support) will install the dependency packages into the
+# `rt_cpan_locallib` path.
+rt_cpan_locallib: /opt/rt
+
+# Place the full path to the source archive for your RT plugins in here.
+rt_plugins:
+  - name: RTx::Calendar
+    version: "1.03"
+  - name: RT::Authen::ExternalAuth
+    version: "0.27"
+  - name: RTx::Extension::MandatoryRequestor
+    version: "0.02"
+
 # The locallib value to be passed to the cpanm module.
 # When null, the this value will be generated based on rt_prefix.
 rt_cpan_locallib: null
@@ -83,11 +104,17 @@ rt_cpan_locallib: null
 # Location of the cpanm (cpanminus) binary
 rt_cpanm_binpath: /usr/bin/cpanm
 
-# Extra PERL5LIB value for use during build and install
-rt_extra_perlib: null
+# Extra PERL5LIB values for use during build and install
+rt_extra_perllibs: []
 
-# Path to the RT_SiteConfig.pm
-rt_siteconfig_path: /opt/rt/etc/RT_SiteConfig.pm
-
-# Contents of RT_SiteConfig.pm
-rt_siteconfig: ""
+# A list of RT_SiteConfig.pm type files. Typically, you'll want to either set
+# the `dest` to either {{ rt_prefix }}/etc/RT_SiteConfig.pm or a file inside
+# {{ rt_prefix }}/etc/RT_SiteConfig.d
+#
+# The list stricture is dicts of `{dest: <file_path>, contents: <file_contents>}`
+#
+# Eg.
+# - dest: /opt/rt/etc/RT_SiteConfid.d/MyUrl.pm
+#   content: |
+#     Set($WebURL, "https://my.rt.site.com");
+rt_siteconfigs: []

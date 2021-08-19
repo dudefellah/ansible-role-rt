@@ -2,7 +2,7 @@
 # tasks file for ansible-role-rt
 - name: Test for an existing RT installation
   stat:
-    path: "{{ rt_prefix }}/etc/RT_SiteConfig.pm"
+    path: "{{ rt_prefix }}/etc/RT_Config.pm"
   register: __rt_config_st
 
 - name: Create the dest dir
@@ -23,33 +23,41 @@
 
 - name: (Pre)-Configure the RT instance
   include_tasks: configure_rt.yml
+  loop: "{{ rt_siteconfigs }}"
+  loop_control:
+    loop_var: __rt_siteconfig
+
+- name: Warn about cpan locallib setting on CentOS 7
+  fail:
+    msg: >-
+      The `rt_cpan_locallib` value isn't respected on CentOS 7. Set that value
+      to null on this platform in order to continue.
+  when:
+    - "ansible_distribution == 'CentOS'"
+    - "ansible_distribution_major_version|int == 7"
+    - "rt_cpan_locallib is not none"
 
 - name: Install extra CPAN modules (CentOS 7)
   command: >-
     cpan {% if (__cm.notest | default('false')) %}-f{% endif %}
       {{ __cm.author }}/{{ __cm.name | replace('::', '-') }}-{{ __cm.version }}.tar.gz
-  #shell: >-
-  #  set -euxo pipefail &&
-  #  cpan {% if (__cm.notest | default('false')) %}-f{% endif %}
-  #    {{ __cm.author }}/{{ __cm.name | replace('::', '-') }}-{{ __cm.version }}.tar.gz 2>&1 | tee /tmp/cpan.log
   environment:
-    PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+    PERL5LIB: "{{ _rt_perl5lib }}"
   loop: "{{ _rt_cpan_modules }}"
   loop_control:
     loop_var: __cm
   when:
     - "ansible_distribution in ['CentOS']"
     - "ansible_distribution_major_version|int == 7"
-    - "not __rt_config_st.stat.exists|bool"
 
 - name: Install any extra cpan modules
   cpanm:
     name: "{{ __cm.name }}"
-    locallib: "{{ rt_prefix }}"
+    locallib: "{{ rt_cpan_locallib | default(omit) }}"
     version: "{{ __cm.version }}"
     notest: "{{ __cm.notest | default('false') }}"
   environment:
-    PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+    PERL5LIB: "{{ _rt_perl5lib }}"
   loop: "{{ _rt_cpan_modules }}"
   loop_control:
     loop_var: __cm
@@ -57,7 +65,6 @@
     - >-
       (ansible_distribution not in ['CentOS'])
       or (ansible_distribution_major_version|int != 7)
-    - "not __rt_config_st.stat.exists|bool"
 
 - block:
     - name: Create a tempdir
@@ -75,7 +82,7 @@
     - name: Configure RT
       command: "./configure --prefix {{ rt_prefix  }} {{ rt_configure_options | join(' ') }}"
       environment:
-        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+        PERL5LIB: "{{ _rt_perl5lib }}"
       args:
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
 
@@ -88,7 +95,7 @@
       environment:
         AUTOMATED_TESTING: true
         PERL_MM_USE_DEFAULT: 1
-        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+        PERL5LIB: "{{ _rt_perl5lib }}"
       when:
         - >-
           (
@@ -104,7 +111,7 @@
       environment:
         AUTOMATED_TESTING: true
         PERL_MM_USE_DEFAULT: 1
-        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+        PERL5LIB: "{{ _rt_perl5lib }}"
         RT_FIX_DEPS_CMD: "{{ rt_cpanm_binpath }}"
       when:
         - >-
@@ -119,7 +126,7 @@
       environment:
         AUTOMATED_TESTING: true
         PERL_MM_USE_DEFAULT: 1
-        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+        PERL5LIB: "{{ _rt_perl5lib }}"
       when:
         - "rt_make_testdeps|bool"
 
@@ -128,7 +135,9 @@
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
         target: install
       environment:
-        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perlib | default('') }}"
+        PERL5LIB: "{{ _rt_perl5lib }}"
+      notify:
+        - "rt restart webserver"
 
     - name: Make initialize-database
       command:
@@ -138,10 +147,12 @@
       environment:
         AUTOMATED_TESTING: true
         PERL_MM_USE_DEFAULT: 1
-        PERL5LIB: "{{ rt_prefix }}/lib:{{ rt_prefix }}/lib/perl5:{{ rt_extra_perllib | default('') }}"
+        PERL5LIB: "{{ _rt_perl5lib }}"
         RT_DBA_USER: "{{ rt_dba_user }}"
         RT_DBA_PASSWORD: "{{ rt_dba_password }}"
       no_log: "{{ rt_no_log }}"
+      notify:
+        - "rt restart webserver"
       when:
         - "rt_initialize_database"
   always:

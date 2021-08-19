@@ -25,9 +25,11 @@ __rt_packages:
       - perl-XML-Parser
       - postgresql-devel
       - screen
+      - tar
       - wget
       - which
     8:
+      - centos-linux-repos
       - cpanminus
       - expat
       - expat-devel
@@ -58,6 +60,7 @@ __rt_packages:
       - spawn-fcgi
       - wget
       - which
+      - tar
 
 # RT's "make fixdeps" should handle all dependencies, but things get weird with
 # Net::SSL and LWP::Protocol::https if you don't have IO::Socket::SSL installed

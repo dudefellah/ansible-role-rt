@@ -2,10 +2,44 @@
 - name: Converge
   hosts: all
   tasks:
+    - set_fact:
+        _site_content: |
+          Set($rtname, "localhost");
+          Set($Organization, "triumf.ca");
+          Set($CorrespondAddress, "rt");
+          Set($CommentAddress, "rt-comment");
+          Set($WebDomain, "localhost");
+          Set($WebPort, 443);
+          Set($WebPath, "");
+          Set($Timezone, "America/Vancouver");
+          Set($DatabaseType, "{{ _database_driver }}");
+          Set($DatabaseHost, "{{ _database_hostname }}");
+          Set($DatabaseRTHost, "172.17.0.1");
+          Set($DatabasePort, "");
+          Set($DatabaseUser, "{{ _database_user | default('rt') }}");
+          Set($DatabasePassword, "{{ _database_password | default('rt123') }}");
+          Set($DatabaseName, "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}");
+          Set($DatabaseRequireSSL, 1);
+          Set($LogToSyslog, "warning");
+          Set($LogStackTraces, 1);
+
     - name: "Include ansible-role-rt"
       include_role:
         name: "ansible-role-rt"
       vars:
         __rt_debug: true
-        # We're only taking this so far...
-        rt_initialize_database: false
+        rt_no_log: false
+        rt_dba_user: "{{ _database_admin_user }}"
+        rt_dba_password: "{{ _database_admin_password }}"
+        rt_cpan_locallib: >-
+          {%- if (
+            (ansible_distribution != 'CentOS')
+            or (ansible_distribution_major_version|int != 7)
+          ) -%}
+          /opt/rt
+          {%- endif -%}
+
+        rt_siteconfigs:
+          - dest: /opt/rt/etc/RT_SiteConfig.pm
+            content: "{{ _site_content }}"
+        rt_webserver_service_restarted_state: null

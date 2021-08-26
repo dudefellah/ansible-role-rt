@@ -14,5 +14,20 @@ provisioner:
   config_options:
     defaults:
       deprecation_warnings: false
+  inventory:
+    group_vars:
+      all:
+        _database_driver: ${RT_DATABASE_DRIVER}
+        _database_hostname: ${RT_DATABASE_HOSTNAME}
+        _database_admin_user: ${RT_DATABASE_ADMIN_USER}
+        _database_admin_password: ${RT_DATABASE_ADMIN_PASSWORD}
+        _database_name: "${RT_DATABASE_NAME}-{{ inventory_hostname }}"
 verifier:
   name: testinfra
+
+
+    # export RT_DATABASE_DRIVER=mysql
+    # export RT_DATABASE_HOSTNAME=172.17.0.1
+    # export RT_DATABASE_ADMIN_USER=root
+    # export RT_DATABASE_RT_PASSWORD=abc123
+    # export RT_DATABASE_ADMIN_PASSWORD=abc123

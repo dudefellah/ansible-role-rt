@@ -6,6 +6,24 @@
         name: epel-release
         state: present
 
+    - name: Install dnf-plugins-core on CentOS 8
+      package:
+        name: dnf-plugins-core
+        state: present
+      when:
+        - "ansible_distribution == 'CentOS'"
+        - "ansible_distribution_major_version|int == 8"
+
+    - name: Enable CentOS8 PowerTools repo
+      lineinfile:
+        path: /etc/yum.repos.d/CentOS-Linux-PowerTools.repo
+        create: false
+        regexp: enabled=
+        line: enabled=1
+      when:
+        - "ansible_distribution == 'CentOS'"
+        - "ansible_distribution_major_version|int == 8"
+
     - name: Install molecule test dependencies
       package:
         name:

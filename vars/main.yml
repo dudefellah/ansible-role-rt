@@ -41,6 +41,7 @@ __rt_packages:
       - graphviz-devel
       - libpq-devel
       - mod_fcgid
+      - mysql-devel
       - openssl
       - openssl-devel
       - perl
@@ -78,6 +79,12 @@ __rt_cpan_modules:
       - name: HTML::Mason::PSGIHandler
         version: 0.53
         author: RUZ
+      - name: DBD::mysql
+        version: "4.050"
+        author: DVEEDEN
+      - name: DBD::Pg
+        version: "3.15.0"
+        author: TURNSTEP
     8:
       - name: HTML::FormatText
         version: 2.16
@@ -89,5 +96,11 @@ __rt_cpan_modules:
         version: 0.07
       - name: Plack::Test
         version: 1.0048
+      - name: DBD::mysql
+        version: "4.050"
+        author: DVEEDEN
+      - name: DBD::Pg
+        version: "3.15.0"
+        author: TURNSTEP
 
 __rt_download_template: "https://download.bestpractical.com/pub/rt/release/rt-{{ rt_version }}.tar.gz"

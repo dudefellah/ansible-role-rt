@@ -28,6 +28,6 @@ repos:
       ]
 
 - repo: https://gitlab.com/devopshq/gitlab-ci-linter
-  rev: v1.0.1
+  rev: v1.0.2
   hooks:
     - id: gitlab-ci-linter

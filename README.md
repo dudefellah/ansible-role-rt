@@ -24,7 +24,7 @@ dependency module [GnuPG::Interface](https://metacpan.org/dist/GnuPG-Interface)
 wants version 2.2+. In this case, you'll need to manually install a more recent
 version of gnupg2. An example of how you might do this in your Ansible playbook
 is available in the `Install gnupg2 2.2+` task in
-[molecule/defaults/prepare.yml](molecule/defaults/prepare.yml).
+[molecule/default/prepare.yml](molecule/default/prepare.yml).
 
 If you're running _only_ gnupg1, then you should be able to get by with that,
 since it's of the required version 1.4, but you will need to make sure that

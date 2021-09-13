@@ -23,6 +23,7 @@
 
 - name: (Pre)-Configure the RT instance
   include_tasks: configure_rt.yml
+  no_log: "{{ rt_no_log }}"
   loop: "{{ rt_siteconfigs }}"
   loop_control:
     loop_var: __rt_siteconfig
@@ -30,12 +31,14 @@
 - name: Warn about cpan locallib setting on CentOS 7
   fail:
     msg: >-
-      The `rt_cpan_locallib` value isn't respected on CentOS 7. Set that value
-      to null on this platform in order to continue.
+      The `rt_cpan_locallib` value ({{ rt_cpan_locallib }}) isn't respected for
+      CentOS 7 systems. Set that value to null on this platform in order to
+      continue.
   when:
     - "ansible_distribution == 'CentOS'"
     - "ansible_distribution_major_version|int == 7"
     - "rt_cpan_locallib is not none"
+    - "rt_cpan_locallib|bool"
 
 - name: Install extra CPAN modules (CentOS 7)
   command: >-
@@ -142,7 +145,7 @@
     - name: Make initialize-database
       command:
       args:
-        cmd: sbin/rt-setup-database --action init > /tmp/db-inst.log 2>&1
+        cmd: sbin/rt-setup-database --action init
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
       environment:
         AUTOMATED_TESTING: true

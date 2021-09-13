@@ -32,6 +32,15 @@ rt_web_user: apache
 
 rt_web_group: apache
 
+# The name of the webserver service being used to service RT. This will
+# probably be 'httpd' on RedHat systems or 'apache' on Debian based
+# systems
+rt_webserver_service_name: httpd
+
+# The state to apply to the webserver when it needs reloading from the
+# role's handler.
+rt_webserver_service_restarted_state: restarted
+
 # Options to pass to ./configure on initial build/installation
 rt_configure_options:
   - --enable-graphviz
@@ -89,17 +98,14 @@ rt_cpan_modules: null
 rt_cpan_locallib: /opt/rt
 
 # Place the full path to the source archive for your RT plugins in here.
-rt_plugins:
-  - name: RTx::Calendar
-    version: "1.03"
-  - name: RT::Authen::ExternalAuth
-    version: "0.27"
-  - name: RTx::Extension::MandatoryRequestor
-    version: "0.02"
-
-# The locallib value to be passed to the cpanm module.
-# When null, the this value will be generated based on rt_prefix.
-rt_cpan_locallib: null
+# eg.
+#  - name: RTx::Calendar
+#    version: "1.03"
+#  - name: RT::Authen::ExternalAuth
+#    version: "0.27"
+#  - name: RTx::Extension::MandatoryRequestor
+#    version: "0.02"
+rt_plugins: []
 
 # Location of the cpanm (cpanminus) binary
 rt_cpanm_binpath: /usr/bin/cpanm

@@ -4,12 +4,25 @@ stages:
   - publish
 
 include:
-  - remote: "https://gitlab.com/dudefellah/ci-templates/-/raw/master/ansible/Molecule.Docker.gitlab-ci.yml"
+  - remote: "https://gitlab.com/dudefellah/ci-templates/-/raw/master/ansible/Molecule.gitlab-ci.yml"
   - remote: "https://gitlab.com/dudefellah/ci-templates/-/raw/master/ansible/Galaxy.gitlab-ci.yml"
+
+variables:
+  MYSQL_ROOT_PASSWORD: rt123
+  RT_DATABASE_DRIVER: mysql
+  RT_DATABASE_HOSTNAME: "mysql"
+  RT_DATABASE_ADMIN_USER: root
+  RT_DATABASE_RT_PASSWORD: abc123
+  RT_DATABASE_ADMIN_PASSWORD: abc123
 
 molecule:
   stage: test
   image: "dudefellah/ansible-molecule:3.2.3"
+  services:
+    - name: mysql:5.7
+      alias: mysql
+      command:
+        - --max-allowed-packet=32505856
   script:
     - molecule test --all
   tags:

@@ -31,14 +31,12 @@
 - name: Warn about cpan locallib setting on CentOS 7
   fail:
     msg: >-
-      The `rt_cpan_locallib` value ({{ rt_cpan_locallib }}) isn't respected for
-      CentOS 7 systems. Set that value to null on this platform in order to
-      continue.
+      The `rt_cpan_locallib` value isn't respected on CentOS 7. Set that value
+      to null on this platform in order to continue.
   when:
     - "ansible_distribution == 'CentOS'"
     - "ansible_distribution_major_version|int == 7"
     - "rt_cpan_locallib is not none"
-    - "rt_cpan_locallib|bool"
 
 - name: Install extra CPAN modules (CentOS 7)
   command: >-

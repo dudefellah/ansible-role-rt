@@ -20,7 +20,7 @@ provisioner:
         _database_driver: ${RT_DATABASE_DRIVER}
         _database_hostname: ${RT_DATABASE_HOSTNAME}
         _database_admin_user: ${RT_DATABASE_ADMIN_USER}
-        _database_admin_password: ${RT_DATABASE_ADMIN_PASSWORD}
+        _database_admin_password: ${RT_DATABASE_ADMIN_PW}
         _database_name: "${RT_DATABASE_NAME}-{{ inventory_hostname }}"
 verifier:
   name: testinfra

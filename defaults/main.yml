@@ -98,14 +98,17 @@ rt_cpan_modules: null
 rt_cpan_locallib: /opt/rt
 
 # Place the full path to the source archive for your RT plugins in here.
-# eg.
-#  - name: RTx::Calendar
-#    version: "1.03"
-#  - name: RT::Authen::ExternalAuth
-#    version: "0.27"
-#  - name: RTx::Extension::MandatoryRequestor
-#    version: "0.02"
-rt_plugins: []
+rt_plugins:
+  - name: RTx::Calendar
+    version: "1.03"
+  - name: RT::Authen::ExternalAuth
+    version: "0.27"
+  - name: RTx::Extension::MandatoryRequestor
+    version: "0.02"
+
+# The locallib value to be passed to the cpanm module.
+# When null, the this value will be generated based on rt_prefix.
+rt_cpan_locallib: null
 
 # Location of the cpanm (cpanminus) binary
 rt_cpanm_binpath: /usr/bin/cpanm

@@ -1,6 +1,6 @@
 ---
 - name: Install RT SiteConfig(s)
-  template:
+  ansible.builtin.template:
     src: RT_SiteConfig.pm.j2
     dest: "{{ __rt_siteconfig.dest }}"
     owner: root

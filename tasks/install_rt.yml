@@ -1,12 +1,20 @@
 ---
 # tasks file for ansible-role-rt
 - name: Test for an existing RT installation
-  stat:
+  ansible.builtin.stat:
     path: "{{ rt_prefix }}/etc/RT_Config.pm"
   register: __rt_config_st
 
+- name: Do backups if we already have an RT install
+  ansible.builtin.include_tasks: tasks/backup_rt.yml
+  when:
+    - "__rt_config_st.stat.exists"
+    - >-
+      (rt_backup_before_upgrade)
+      or (rt_backup_database_before_upgrade)
+
 - name: Create the dest dir
-  file:
+  ansible.builtin.file:
     path: "{{ rt_prefix }}/lib"
     mode: "0755"
     state: directory
@@ -14,7 +22,7 @@
     - "not __rt_config_st.stat.exists|bool"
 
 - name: Create the RT etc dir
-  file:
+  ansible.builtin.file:
     path: "{{ rt_prefix }}/etc"
     mode: "0755"
     state: directory
@@ -22,14 +30,14 @@
     - "not __rt_config_st.stat.exists|bool"
 
 - name: (Pre)-Configure the RT instance
-  include_tasks: configure_rt.yml
+  ansible.builtin.include_tasks: configure_rt.yml
   no_log: "{{ rt_no_log }}"
   loop: "{{ rt_siteconfigs }}"
   loop_control:
     loop_var: __rt_siteconfig
 
 - name: Warn about cpan locallib setting on CentOS 7
-  fail:
+  ansible.builtin.fail:
     msg: >-
       The `rt_cpan_locallib` value isn't respected on CentOS 7. Set that value
       to null on this platform in order to continue.
@@ -38,8 +46,9 @@
     - "ansible_distribution_major_version|int == 7"
     - "rt_cpan_locallib is not none"
 
+# yamllint disable rule:line-length
 - name: Install extra CPAN modules (CentOS 7)
-  command: >-
+  ansible.builtin.command: >-
     cpan {% if (__cm.notest | default('false')) %}-f{% endif %}
       {{ __cm.author }}/{{ __cm.name | replace('::', '-') }}-{{ __cm.version }}.tar.gz
   environment:
@@ -50,9 +59,10 @@
   when:
     - "ansible_distribution in ['CentOS']"
     - "ansible_distribution_major_version|int == 7"
+# yamllint enable rule:line-length
 
 - name: Install any extra cpan modules
-  cpanm:
+  community.general.packaging.language.cpanm:
     name: "{{ __cm.name }}"
     locallib: "{{ rt_cpan_locallib | default(omit) }}"
     version: "{{ __cm.version }}"
@@ -67,36 +77,61 @@
       (ansible_distribution not in ['CentOS'])
       or (ansible_distribution_major_version|int != 7)
 
-- block:
+- name: Download RT into a tmpdir and build
+  tags:
+    - rt
+  when:
+    # If we didn't get a version and there's no RT_Config.pm found, we
+    # treat this as a fresh install.
+    # An existing RT_Config.pm with no __rt_installed_version implies
+    # that RT was installed outside of this role and it's not appropriate
+    # for the role to try to upgrade it.
+    #
+    # If it finds the cached version (from this role) and it doens't match
+    # the configured version, we assume that we're allowed to upgrade
+    # (with rt_do_upgrade set).
+    - >-
+      (
+        (__rt_installed_version is none)
+        and (__rt_config_st.stat.exists)
+      )
+      or (
+        (__rt_installed_version != rt_version)
+        and (rt_do_upgrade)
+      )
+  block:
     - name: Create a tempdir
-      tempfile:
+      ansible.builtin.tempfile:
         state: directory
       changed_when: false
       register: tmpdir
 
     - name: Download RT
-      unarchive:
+      ansible.builtin.unarchive:
         src: "{{ _rt_download_url }}"
         dest: "{{ tmpdir.path }}/"
         remote_src: true
 
     - name: Configure RT
-      command: "./configure --prefix {{ rt_prefix  }} {{ rt_configure_options | join(' ') }}"
-      environment:
-        PERL5LIB: "{{ _rt_perl5lib }}"
+      ansible.builtin.command: |
+        ./configure --prefix {{ rt_prefix }} \
+          {{ rt_configure_options | join(' ') }}
       args:
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+      environment:
+        PERL5LIB: "{{ _rt_perl5lib }}"
+      changed_when: false
 
     # On CentOS 7, PERL5LIB is meaningless, since we're just letting CPAN
     # install into the system path.
     - name: Make fixdeps (w/o cpanm)
-      make:
+      community.general.system.make:
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
         target: fixdeps
       environment:
-        AUTOMATED_TESTING: true
-        NONINTERACTIVE_TESTING: true
-        PERL_MM_USE_DEFAULT: 1
+        AUTOMATED_TESTING: "true"
+        NONINTERACTIVE_TESTING: "true"
+        PERL_MM_USE_DEFAULT: "1"
         PERL5LIB: "{{ _rt_perl5lib }}"
       when:
         - >-
@@ -107,13 +142,13 @@
           or (rt_cpanm_binpath is none)
 
     - name: Make fixdeps (cpanm)
-      make:
+      community.general.system.make:
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
         target: fixdeps
       environment:
-        AUTOMATED_TESTING: true
-        NONINTERACTIVE_TESTING: true
-        PERL_MM_USE_DEFAULT: 1
+        AUTOMATED_TESTING: "true"
+        NONINTERACTIVE_TESTING: "true"
+        PERL_MM_USE_DEFAULT: "1"
         PERL5LIB: "{{ _rt_perl5lib }}"
         RT_FIX_DEPS_CMD: "{{ rt_cpanm_binpath }}"
       when:
@@ -123,33 +158,49 @@
         - "rt_cpanm_binpath is not none"
 
     - name: Make testdeps
-      make:
+      community.general.system.make:
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
         target: testdeps
       environment:
-        AUTOMATED_TESTING: true
-        PERL_MM_USE_DEFAULT: 1
+        AUTOMATED_TESTING: "true"
+        PERL_MM_USE_DEFAULT: "1"
         PERL5LIB: "{{ _rt_perl5lib }}"
       when:
         - "rt_make_testdeps|bool"
 
     - name: Make install
-      make:
+      community.general.system.make:
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
         target: install
       environment:
         PERL5LIB: "{{ _rt_perl5lib }}"
       notify:
         - "rt restart webserver"
+      when:
+        - "__rt_installed_version is none"
+
+    - name: Make upgrade
+      community.general.system.make:
+        chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+        target: upgrade
+      environment:
+        PERL5LIB: "{{ _rt_perl5lib }}"
+      notify:
+        - "rt restart webserver"
+      when:
+        - "rt_do_upgrade"
+        - "__rt_installed_version is not none"
 
     - name: Make initialize-database
-      command:
+      ansible.builtin.command:
       args:
-        cmd: sbin/rt-setup-database --action init
+        cmd: >-
+          sbin/rt-setup-database --action init \
+            {{ rt_initialize_database_args | join(' ') }}
         chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
       environment:
-        AUTOMATED_TESTING: true
-        PERL_MM_USE_DEFAULT: 1
+        AUTOMATED_TESTING: "true"
+        PERL_MM_USE_DEFAULT: "1"
         PERL5LIB: "{{ _rt_perl5lib }}"
         RT_DBA_USER: "{{ rt_dba_user }}"
         RT_DBA_PASSWORD: "{{ rt_dba_password }}"
@@ -158,13 +209,44 @@
         - "rt restart webserver"
       when:
         - "rt_initialize_database"
+        - "__rt_installed_version is none"
+
+    # This step seems to return non-0 even when it succeeds?
+    - name: Upgrade the database
+      ansible.builtin.shell: |
+        set -euxo pipefail && \
+          /usr/bin/yes | sbin/rt-setup-database --action upgrade \
+          --upgrade-from {{ __rt_installed_version }} \
+          --upgrade-to {{ rt_version }}
+      args:
+        chdir: "{{ tmpdir.path }}/rt-{{ rt_version }}"
+        # for set -o pipefail
+        executable: /bin/bash
+      register: __rt_database_upgrade
+      failed_when:
+        - "__rt_database_upgrade.stdout_lines[-1] != 'Done.'"
+      environment:
+        PERL_MM_USE_DEFAULT: "1"
+        PERL5LIB: "{{ _rt_perl5lib }}"
+        RT_DBA_USER: "{{ rt_dba_user }}"
+        RT_DBA_PASSWORD: "{{ rt_dba_password }}"
+      no_log: "{{ rt_no_log }}"
+      when:
+        - "__rt_installed_version is not none"
+        - "rt_do_upgrade"
+
+    - name: Deposit the cached version
+      tags:
+        - rt
+      ansible.builtin.template:
+        src: rt.version-cache.j2
+        dest: "{{ rt_prefix }}/.rt-version"
+        mode: "0644"
   always:
     - name: Clean out tmpdir
-      file:
+      ansible.builtin.file:
         path: "{{ tmpdir.path }}"
         state: absent
       changed_when: false
       when:
         - "not __rt_debug | default(false)"
-  when:
-    - "not __rt_config_st.stat.exists|bool"

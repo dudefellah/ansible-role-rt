@@ -1,0 +1,8 @@
+---
+# .ansible-lint
+exclude_paths:
+  - $HOME/.ansible/roles
+  - .cache/
+  - .gitlab-ci.yml
+  - .pre-commit-config.yaml
+  - molecule/

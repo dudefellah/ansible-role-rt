@@ -33,43 +33,40 @@ user) is that gpg1 binary. In other words, the installer isn't going to
 specifically look for a binary called `gpg1`, and it's not going to distinguish
 versions if you have another `gnupg2` installation using that `gpg` binary name.
 
-CentOS 8:
-
-RT on CentOS 8 requires some additional setup to DNF in the form of the
-`EPEL` repo and the `PowerTools` repo. We already have an option to quickly
-install the `epel-release` package (making EPEL available), but PowerTools
-depends on having the `dnf-plugins-core` package installed and then enabling
-the repo with `dnf config-manager`. I feel like this should be outside the
-scope of this small role, so I'm leaving it up to the users of this role to
-take that step first before attempting to run this role.
-
 Role Variables
 --------------
 
-As with all of the roles that I create, the settable values and their
-descriptions can be read as comments in [defaults/main.yml](defaults/main.yml).
+The configurable values and their descriptions can be read as comments in
+[defaults/main.yml](defaults/main.yml).
 You might glean a little bit more information on the defaults that are
 automatically determined for certain null values in
 [vars/main.yml](vars/main.yml) as well. These values are partitioned by
 distribution and version in a way that (I hope) should be obvious to the reader.
 
+You'll also need to be somewhat careful about editing the `rt_cpan_modules`
+value during your install. The existing module defaults (listed in
+[vars/main.yml](vars/main.yml)) are there to make the `make fixdeps` part of
+the install happy. The official RT documentation recommends running
+`make fixdeps` multiple times to ensure that everything gets installed, but
+I would prefer to not have this role run that command multiple times if I
+can help it, hence the `rt_cpan_modules` value. So if you change the list of
+modules in that array, you should check that you're not losing dependencies
+that help the smooth (or as smooth as I've gotten it) installation flow.
+
+I guess a more concise way to put this is that if you customize
+`rt_cpan_modules`, you should still include what's listed in `vars/main.yml`,
+and add to it unless you know what you're doing.
+
 Dependencies
 ------------
 
-No specific role dependencies exist, but this role does make some small
-assumptions:
+* Due to a recent update/attempt to make ansible-lint happy, I've renamed
+  tasks to their fully qualified collection name (fqcn).  This means that
+  the following collections are required:
 
-* You will install and configure your database host, users, privileges, etc.
-  separately. I have my own
-  [postgresql role](https://galaxy.ansible.com/dudefellah/postgresql) which
-  can help you in this regard, but feel free to use whatever process you prefer
-  to prepare your database.
-
-* You will install and configure your web server (likely Apache) separately.
-  You might want to take a look at
-  [geerlingguy's](https://galaxy.ansible.com/geerlingguy)
-  [Apache role](https://galaxy.ansible.com/geerlingguy/apache) or whatever
-  process suits your fancy.
+  * `ansible.posix`
+  * `community.general`
+  * `community.mysql` - this is only used for backups during version upgrades
 
 * On CentOS 7, since we're not using cpanminus, you will need to have CPAN
   installed and configured before using this role.
@@ -77,20 +74,6 @@ assumptions:
 * As mentioned in the requirements section, CentOS 7 systems will probably need
   an updated gpg2 version to make RT happy. This will need to be installed
   beforehand.
-
-* You'll also need to be somewhat careful about editing the `rt_cpan_modules`
-  value during your install. The existing module defaults (listed in
-  [vars/main.yml](vars/main.yml)) are there to make the `make fixdeps` part of
-  the install happy. The official RT documentation recommends running
-  `make fixdeps` multiple times to ensure that everything gets installed, but
-  I would prefer to not have this role run that command multiple times if I
-  can help it, hence the `rt_cpan_modules` value. So if you change the list of
-  modules in that array, you should check that you're not losing dependencies
-  that help the smooth (or as smooth as I've gotten it) installation flow.
-
-  I guess a more concise way to put this is that if you customize
-  `rt_cpan_modules`, you should still include what's listed in `vars/main.yml`,
-  and add to it unless you know what you're doing.
 
 Example Playbook
 ----------------
@@ -101,7 +84,7 @@ The general flow would look something like this:
       tasks:
         - block:
             - name: Install and configure the database
-              include_role:
+              ansible.builtin.include_role:
                 name: dudefellah.postgresql
               vars:
                 ...
@@ -111,14 +94,14 @@ The general flow would look something like this:
       tasks:
         - block:
             - name: Install RT
-              include_role:
+              ansible.builtin.include_role:
                 name: dudefellah.rt
               vars:
                 rt_version: 5.0.1
                 ...
 
             - name: Configure Apache
-              include_role:
+              ansible.builtin.include_role:
                 name: geerlingguy.apache
               vars:
                 apache_vhosts: |

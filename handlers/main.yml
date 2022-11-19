@@ -1,9 +1,10 @@
 ---
 # handlers file for ansible-role-rt
 - name: Restart the webserver
-  service:
+  ansible.builtin.service:
     name: "{{ rt_webserver_service_name }}"
     state: "{{ rt_webserver_service_restarted_state }}"
   listen: "rt restart webserver"
   when:
     - "rt_webserver_service_restarted_state is not none"
+    - "'molecule-converge-test' is not in ansible_run_tags"

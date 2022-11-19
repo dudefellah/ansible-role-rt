@@ -20,6 +20,15 @@ rt_prefix: /opt/rt
 # Set to true to download RT before configuring it.
 rt_install: true
 
+# Set this to true to allow the role to upgrade RT when it finds an
+# rt_version that's different from the installed one.
+#
+# The "upgrade" determination is based on a file that gets cached by
+# this role, so the previous version of RT should've been installed
+# by this role as well.  If the previous version was manually installed,
+# this role probably won't do the right thing.
+rt_do_upgrade: false
+
 # Packages to install as dependencies.
 # When set to null, the appropriate dependencies will be guessed
 # (see vars/main.yml). Set this to an empty list to prevent any
@@ -55,6 +64,10 @@ rt_make_testdeps: true
 # Set to false to prevent database initialization and/or upgrades
 rt_initialize_database: true
 
+# Additional arguments to pass during rt-setup-database --action init
+# phase, such as --skip-create, etc
+rt_initialize_database_args: []
+
 # When this value is set, a database upgrade will be attempted at the end
 # of the installation. This value should probably only be set as a one-off
 # (eg. as an argument when running ansible-playbook) during the upgrade process,
@@ -70,6 +83,26 @@ rt_dba_user: postgres
 
 # The password for the database admin who will be installing the RT database.
 rt_dba_password: postgres
+
+# Destination path for your backed up database and Perl files
+#
+rt_backup_dir: /var/backups/rt
+
+# You can set this to false to prevent upgrades, but that's probably not
+# the best idea
+rt_backup_before_upgrade: true
+
+# NOTE: Database backups only handle mysql right now.  If you plan on
+# upgrading with a different database, you should do the database backup
+# manually, and turn this option to false
+rt_backup_database_before_upgrade: "{{ rt_backup_before_upgrade }}"
+
+# When doing upgrades with backups, the database with the name supplied by this
+# value will be backed up.
+rt_backup_database: all
+
+# Set the backup database host or IP here.
+rt_backup_database_host: localhost
 
 # CPAN modules to install before the installation process installs its own
 # dependencies. This can help fix issues with the CPAN modules being installed
@@ -90,12 +123,6 @@ rt_dba_password: postgres
 #
 # { author: "MYAUTHOR" }
 rt_cpan_modules: null
-
-# When set, the cpanminus operations (this role will artificially fail on
-# CentOS 7 if you try to have this value set to non-null due to the lack of
-# cpanminus support) will install the dependency packages into the
-# `rt_cpan_locallib` path.
-rt_cpan_locallib: /opt/rt
 
 # Place the full path to the source archive for your RT plugins in here.
 rt_plugins:
@@ -120,7 +147,8 @@ rt_extra_perllibs: []
 # the `dest` to either {{ rt_prefix }}/etc/RT_SiteConfig.pm or a file inside
 # {{ rt_prefix }}/etc/RT_SiteConfig.d
 #
-# The list stricture is dicts of `{dest: <file_path>, contents: <file_contents>}`
+# The list stricture is dicts of
+#   `{dest: <file_path>, contents: <file_contents>}`
 #
 # Eg.
 # - dest: /opt/rt/etc/RT_SiteConfid.d/MyUrl.pm

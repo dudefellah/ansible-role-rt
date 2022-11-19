@@ -1,38 +1,66 @@
 ---
 # tasks file for ansible-role-rt
 - name: Gather role facts
-  include_tasks: gather_facts.yml
+  tags:
+    - rt
+  ansible.builtin.include_tasks: gather_facts.yml
 
 - name: Install dependency packages
-  package:
+  tags:
+    - rt
+  ansible.builtin.package:
     name: "{{ _rt_packages }}"
     state: present
+  when:
+    - >-
+      (ansible_distribution != 'CentOS')
+      or (ansible_distribution_major_version|int < 8)
+
+- name: Install dependency packages with DNF
+  tags:
+    - rt
+  ansible.builtin.dnf:
+    name: "{{ _rt_packages }}"
+    state: present
+    enablerepo: 'appstream,baseos,extras,powertools'
+  when:
+    - "ansible_distribution == 'CentOS'"
+    - "ansible_distribution_major_version|int >= 8"
 
 - name: Run RT installation tasks
-  include_tasks: install_rt.yml
+  tags:
+    - rt
+  ansible.builtin.include_tasks: install_rt.yml
   when:
     - "rt_install"
     - "_rt_download_url|length > 0"
 
 - name: Configure RT instance
-  include_tasks: configure_rt.yml
+  tags:
+    - rt
+  ansible.builtin.include_tasks: configure_rt.yml
   when:
     - "not rt_install|bool"
     - "rt_siteconfig_path is not none"
     - "rt_siteconfig"
 
 - name: Update RT database
-  command:
-  args:
-    cmd: sbin/rt-setup-database --action upgrade --upgrade-from "{{ rt_update_source_version }}" --upgrade-to "{{ rt_version }}"
-    chdir: "{{ rt_prefix }}"
-  environment:
-    AUTOMATED_TESTING: true
-    PERL_MM_USE_DEFAULT: 1
-    PERL5LIB: "{{ _rt_perl5lib }}"
-    RT_DBA_USER: "{{ rt_dba_user }}"
-    RT_DBA_PASSWORD: "{{ rt_dba_password }}"
   no_log: "{{ rt_no_log }}"
   when:
     - "rt_update_source_version is not none"
     - "rt_version is not none"
+  tags:
+    - rt
+  environment:
+    AUTOMATED_TESTING: "true"
+    PERL_MM_USE_DEFAULT: "1"
+    PERL5LIB: "{{ _rt_perl5lib }}"
+    RT_DBA_USER: "{{ rt_dba_user }}"
+    RT_DBA_PASSWORD: "{{ rt_dba_password }}"
+  ansible.builtin.command: |
+    sbin/rt-setup-database \
+      --action upgrade \
+      --upgrade-from "{{ rt_update_source_version }}" \
+      --upgrade-to "{{ rt_version }}"
+  args:
+    chdir: "{{ rt_prefix }}"

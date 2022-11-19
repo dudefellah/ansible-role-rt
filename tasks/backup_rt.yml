@@ -1,0 +1,57 @@
+---
+- name: Create a general backup dir
+  when:
+    - >-
+     ( rt_backup_before_upgrade)
+     or (rt_backup_database_before_upgrade)
+  tags:
+    - rt
+  ansible.builtin.file:
+    path: "{{ rt_backup_dir }}"
+    state: directory
+    mode: "0750"
+
+- name: Create the backup database dir
+  when:
+    - "rt_backup_database_before_upgrade"
+  tags:
+    - rt
+  ansible.builtin.file:
+    path: "{{ rt_backup_dir }}/db"
+    state: directory
+    mode: "0750"
+
+- name: Backup the database
+  no_log: "{{ rt_no_log }}"
+  when:
+    - "rt_backup_database_before_upgrade"
+  tags:
+    - rt
+  community.mysql.mysql_db:
+    state: dump
+    name: "{{ rt_backup_database }}"
+    login_user: "{{ rt_dba_user }}"
+    login_password: "{{ rt_dba_password }}"
+    login_host: "{{ rt_backup_database_host }}"
+    target: >-
+      {{ rt_backup_dir }}/db/{{ ansible_date_time.iso8601_basic_short }}.sql
+
+- name: Create the backup code dir
+  when:
+    - "rt_backup_before_upgrade"
+  tags:
+    - rt
+  ansible.builtin.file:
+    path: "{{ rt_backup_dir }}/rt/"
+    state: directory
+    mode: "0750"
+
+- name: Copy the RT tree contents
+  when:
+    - "rt_backup_before_upgrade"
+  tags:
+    - rt
+  ansible.posix.synchronize:
+    src: "{{ rt_prefix }}/"
+    dest: "{{ rt_backup_dir }}/rt/"
+  delegate_to: "{{ inventory_hostname }}"

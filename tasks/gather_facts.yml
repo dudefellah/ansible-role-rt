@@ -1,6 +1,7 @@
 ---
+# yamllint disable rule:line-length
 - name: Get the list of installable packages
-  set_fact:
+  ansible.builtin.set_fact:
     _rt_packages: >-
       {%- if rt_packages is not none -%}
       {{ rt_packages }}
@@ -19,7 +20,7 @@
       {%- endif -%}
 
 - name: Create a list of installable CPAN modules
-  set_fact:
+  ansible.builtin.set_fact:
     _rt_cpan_modules: >-
       {%- if rt_cpan_modules is not none -%}
       {{ rt_cpan_modules }}
@@ -36,9 +37,10 @@
       {%- else -%}
       []
       {%- endif -%}
+# yamllint enable rule:line-length
 
-- name: Set the locallib path for RT CPAN dependency modules
-  set_fact:
+- name: Set the locallib path for RT CPAN dependency modules  # noqa jinja[spacing] yaml[line-length]
+  ansible.builtin.set_fact:
     _rt_cpan_locallib: >-
       {%- if rt_cpan_locallib is not none -%}
       {{ rt_cpan_locallib }}
@@ -46,8 +48,8 @@
       {{ rt_prefix }}/lib
       {%- endif -%}
 
-- name: Set the RT download source
-  set_fact:
+- name: Set the RT download source  # noqa jinja[spacing]
+  ansible.builtin.set_fact:
     _rt_download_url: >-
       {%- if rt_download_url is not none -%}
       {{ rt_download_url }}
@@ -56,25 +58,25 @@
       {%- endif -%}
 
 - name: Gather the logged in user
-  command: whoami
+  ansible.builtin.command: whoami
   register: _rt_whoami
   changed_when: false
 
 - name: Make sure we have a local user
-  set_fact:
+  ansible.builtin.set_fact:
     _rt_ansible_user: "{{ ansible_user | default(_rt_whoami.stdout) }}"
 
 - name: Get the Ansible user's info from the passwd db
-  getent:
+  ansible.builtin.getent:
     database: passwd
     key: "{{ _rt_ansible_user }}"
 
 - name: Store the Ansible user's home directory for convenience
-  set_fact:
+  ansible.builtin.set_fact:
     _rt_install_user_home: "{{ getent_passwd[_rt_ansible_user][4] }}"
 
 - name: Collect an appropriate PERL5LIB environment variable
-  set_fact:
+  ansible.builtin.set_fact:
     _rt_perl5lib: >-
       {%- if (
             (rt_cpan_locallib is not none)
@@ -92,3 +94,26 @@
       {{ [ rt_prefix + '/lib', rt_prefix + '/lib/perl5' ]
          | join(':') }}
       {%- endif -%}
+
+- name: Test for a cached rt version file
+  ansible.builtin.stat:
+    path: "{{ rt_prefix }}/.rt-version"
+  register: __rt_version_st
+
+- name: Slurp the RT version
+  ansible.builtin.slurp:
+    path: "{{ rt_prefix }}/.rt-version"
+  register: __rt_version_slurp
+  when:
+    - "__rt_version_st.stat.exists"
+
+- name: Set the default version
+  ansible.builtin.set_fact:
+    __rt_installed_version: null
+
+- name: Get the cached (installed) version
+  ansible.builtin.set_fact:
+    __rt_installed_version: >-
+      {{ __rt_version_slurp.content | default('') | b64decode | trim }}
+  when:
+    - "__rt_version_st.stat.exists"

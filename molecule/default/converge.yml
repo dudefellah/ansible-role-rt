@@ -5,7 +5,7 @@
     - set_fact:
         _site_content: |
           Set($rtname, "localhost");
-          Set($Organization, "triumf.ca");
+          Set($Organization, "test.ca");
           Set($CorrespondAddress, "rt");
           Set($CommentAddress, "rt-comment");
           Set($WebDomain, "localhost");

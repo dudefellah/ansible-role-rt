@@ -24,7 +24,7 @@
 - name: Backup the database
   no_log: "{{ rt_no_log }}"
   when:
-    - "rt_backup_database_before_upgrade"
+    - "rt_backup_database_before_upgrade|bool"
   tags:
     - rt
   community.mysql.mysql_db:
@@ -38,7 +38,7 @@
 
 - name: Create the backup code dir
   when:
-    - "rt_backup_before_upgrade"
+    - "rt_backup_before_upgrade|bool"
   tags:
     - rt
   ansible.builtin.file:
@@ -48,7 +48,7 @@
 
 - name: Copy the RT tree contents
   when:
-    - "rt_backup_before_upgrade"
+    - "rt_backup_before_upgrade|bool"
   tags:
     - rt
   ansible.posix.synchronize:

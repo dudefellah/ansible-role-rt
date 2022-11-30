@@ -1,6 +1,8 @@
 ---
 # yamllint disable rule:line-length
 - name: Get the list of installable packages
+  tags:
+    - rt
   ansible.builtin.set_fact:
     _rt_packages: >-
       {%- if rt_packages is not none -%}
@@ -20,6 +22,8 @@
       {%- endif -%}
 
 - name: Create a list of installable CPAN modules
+  tags:
+    - rt
   ansible.builtin.set_fact:
     _rt_cpan_modules: >-
       {%- if rt_cpan_modules is not none -%}
@@ -40,15 +44,19 @@
 # yamllint enable rule:line-length
 
 - name: Set the locallib path for RT CPAN dependency modules  # noqa jinja[spacing] yaml[line-length]
+  tags:
+    - rt
   ansible.builtin.set_fact:
     _rt_cpan_locallib: >-
       {%- if rt_cpan_locallib is not none -%}
       {{ rt_cpan_locallib }}
       {%- else -%}
-      {{ rt_prefix }}/lib
+      {{ rt_prefix }}
       {%- endif -%}
 
 - name: Set the RT download source  # noqa jinja[spacing]
+  tags:
+    - rt
   ansible.builtin.set_fact:
     _rt_download_url: >-
       {%- if rt_download_url is not none -%}
@@ -58,24 +66,34 @@
       {%- endif -%}
 
 - name: Gather the logged in user
+  tags:
+    - rt
   ansible.builtin.command: whoami
   register: _rt_whoami
   changed_when: false
 
 - name: Make sure we have a local user
+  tags:
+    - rt
   ansible.builtin.set_fact:
     _rt_ansible_user: "{{ ansible_user | default(_rt_whoami.stdout) }}"
 
 - name: Get the Ansible user's info from the passwd db
+  tags:
+    - rt
   ansible.builtin.getent:
     database: passwd
     key: "{{ _rt_ansible_user }}"
 
 - name: Store the Ansible user's home directory for convenience
+  tags:
+    - rt
   ansible.builtin.set_fact:
     _rt_install_user_home: "{{ getent_passwd[_rt_ansible_user][4] }}"
 
 - name: Collect an appropriate PERL5LIB environment variable
+  tags:
+    - rt
   ansible.builtin.set_fact:
     _rt_perl5lib: >-
       {%- if (
@@ -96,11 +114,15 @@
       {%- endif -%}
 
 - name: Test for a cached rt version file
+  tags:
+    - rt
   ansible.builtin.stat:
     path: "{{ rt_prefix }}/.rt-version"
   register: __rt_version_st
 
 - name: Slurp the RT version
+  tags:
+    - rt
   ansible.builtin.slurp:
     path: "{{ rt_prefix }}/.rt-version"
   register: __rt_version_slurp
@@ -108,10 +130,14 @@
     - "__rt_version_st.stat.exists"
 
 - name: Set the default version
+  tags:
+    - rt
   ansible.builtin.set_fact:
     __rt_installed_version: null
 
 - name: Get the cached (installed) version
+  tags:
+    - rt
   ansible.builtin.set_fact:
     __rt_installed_version: >-
       {{ __rt_version_slurp.content | default('') | b64decode | trim }}

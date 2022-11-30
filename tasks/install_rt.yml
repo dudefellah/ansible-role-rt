@@ -64,9 +64,9 @@
 - name: Install any extra cpan modules
   community.general.packaging.language.cpanm:
     name: "{{ __cm.name }}"
-    locallib: "{{ rt_cpan_locallib | default(omit) }}"
+    locallib: "{{ _rt_cpan_locallib | default(omit) }}"
     version: "{{ __cm.version }}"
-    notest: "{{ __cm.notest | default('false') }}"
+    notest: "{{ __cm.notest | default(false) }}"
   environment:
     PERL5LIB: "{{ _rt_perl5lib }}"
   loop: "{{ _rt_cpan_modules }}"
@@ -178,6 +178,37 @@
         - "rt restart webserver"
       when:
         - "__rt_installed_version is none"
+
+    # yamllint disable rule:line-length
+    - name: Install extra plugins (CentOS 7)
+      ansible.builtin.command: >-
+        cpan {% if (__rt_plug.notest | default(false) | bool) %}-f{% endif %}
+          {{ __rt_plug.author }}/{{ __rt_plug.name | replace('::', '-') }}-{{ __rt_plug.version }}.tar.gz
+      environment:
+        PERL5LIB: "{{ _rt_perl5lib }}"
+      loop: "{{ rt_plugins }}"
+      loop_control:
+        loop_var: __rt_plug
+      when:
+        - "ansible_distribution in ['CentOS']"
+        - "ansible_distribution_major_version|int == 7"
+
+    # yamllint enable rule:line-length
+    - name: Install extra plugins
+      community.general.packaging.language.cpanm:
+        name: "{{ __rt_plug.name }}"
+        locallib: "{{ _rt_cpan_locallib | default(omit) }}"
+        version: "{{ __rt_plug.version }}"
+        notest: "{{ __rt_plug.notest | default(false) }}"
+      environment:
+        PERL5LIB: "{{ _rt_perl5lib }}"
+      loop: "{{ rt_plugins }}"
+      loop_control:
+        loop_var: __rt_plug
+      when:
+        - >-
+          (ansible_distribution not in ['CentOS'])
+          or (ansible_distribution_major_version|int != 7)
 
     - name: Make upgrade
       community.general.system.make:

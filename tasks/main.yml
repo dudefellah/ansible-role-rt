@@ -22,7 +22,7 @@
   ansible.builtin.dnf:
     name: "{{ _rt_packages }}"
     state: present
-    enablerepo: 'appstream,baseos,extras,powertools'
+    enablerepo: 'appstream,baseos,extras,powertools,epel'
   when:
     - "ansible_distribution == 'CentOS'"
     - "ansible_distribution_major_version|int >= 8"
